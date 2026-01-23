@@ -23,7 +23,7 @@ class CrossAuthController extends Controller
 
     public function __construct()
     {
-        $this->wapBackendUrl = env('WAP_BACKEND_URL', 'https://wapback.hellowap.com');
+        $this->wapBackendUrl = env('WAP_BACKEND_URL', 'https://devchat.hellowap.com');
     }
 
     /**
