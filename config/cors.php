@@ -28,6 +28,8 @@ return [
         'http://127.0.0.1:5174',
         'http://localhost:8000',
         'http://localhost:8001',
+        'https://dev.hellowap.com',
+        'https://preprod.hellowap.com'
     ],
 
     'allowed_origins_patterns' => [],
