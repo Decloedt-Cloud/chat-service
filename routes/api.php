@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\CrossAuthController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -73,6 +74,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('v1')->group(function () {
+    // Broadcasting authentication (for WebSocket) - Must be inside v1 to match frontend URL
+    Route::post('/broadcasting/auth', 'App\Http\Controllers\Api\V1\BroadcastingController@authenticate');
+
     // Conversations
     Route::apiResource('conversations', 'App\Http\Controllers\Api\V1\ConversationController');
 
@@ -97,9 +101,6 @@ Route::post('/conversations/{conversation}/typing', 'App\Http\Controllers\Api\V1
     // Users
     Route::get('/users', 'App\Http\Controllers\Api\V1\UserController@index');
     Route::get('/users/{user}', 'App\Http\Controllers\Api\V1\UserController@show');
-
-    // Broadcasting authentication (for WebSocket)
-    Route::post('/broadcasting/auth', 'App\Http\Controllers\Api\V1\BroadcastingController@authenticate');
 });
 });
 
