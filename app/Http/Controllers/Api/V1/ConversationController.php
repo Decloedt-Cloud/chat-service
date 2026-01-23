@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ConversationController extends Controller
 {
@@ -116,7 +117,7 @@ class ConversationController extends Controller
                     $exists = User::where('id', $value)
                         ->orWhere('wap_user_id', $value)
                         ->exists();
-                    
+                   
                     if (!$exists) {
                         $fail("Le participant avec l'ID {$value} n'existe pas.");
                     }
@@ -145,7 +146,7 @@ class ConversationController extends Controller
 
             // Rechercher l'utilisateur par ID local en priorité
             $otherUser = User::where('id', $otherUserIdValue)->first();
-            
+           
             // Si l'utilisateur trouvé est soi-même, vérifier si ce n'est pas plutôt un ID WAP destiné à un autre utilisateur
             // (Cas de collision : Mon ID local = 30, et je veux contacter le WAP ID 30 qui est quelqu'un d'autre)
             if ($otherUser && $otherUser->id == $user->id) {
@@ -154,7 +155,7 @@ class ConversationController extends Controller
                     $otherUser = $otherUserByWap;
                 }
             }
-            
+           
             // Sinon par wap_user_id si non trouvé par ID local
             if (!$otherUser) {
                 $otherUser = User::where('wap_user_id', $otherUserIdValue)->first();
@@ -347,7 +348,7 @@ class ConversationController extends Controller
         if ($participant) {
             // ✅ CORRECTION: Utiliser markAsRead() pour reset unread_count à 0
             $participant->markAsRead();
-            
+           
             // Recharger pour avoir last_read_at à jour
             $participant->refresh();
 
@@ -397,7 +398,7 @@ class ConversationController extends Controller
                 ]);
 
                 $result = $pusher->trigger($channelName, $eventName, $eventData);
-                
+               
                 \Log::info('[ConversationController] MessageRead event broadcasted successfully', [
                     'result' => $result ? 'success' : 'failed',
                 ]);
