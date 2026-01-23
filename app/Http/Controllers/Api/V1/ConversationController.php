@@ -73,6 +73,36 @@ class ConversationController extends Controller
         $user = $request->user();
         $appId = $request->header('X-Application-ID', 'default');
 
+        // Pré-traitement des participants : Création à la volée des utilisateurs manquants
+        if ($request->has('participant_ids') && is_array($request->input('participant_ids'))) {
+            foreach ($request->input('participant_ids') as $wapId) {
+                // On vérifie si l'ID est numérique (ID WAP)
+                if (is_numeric($wapId)) {
+                    // Vérifier si l'utilisateur existe déjà (par ID local ou WAP ID)
+                    $exists = User::where('id', $wapId)
+                        ->orWhere('wap_user_id', $wapId)
+                        ->exists();
+
+                    if (!$exists) {
+                        // Création d'un utilisateur placeholder pour permettre la conversation
+                        // Il sera mis à jour lors de sa première connexion via CrossAuth
+                        try {
+                            User::create([
+                                'wap_user_id' => $wapId,
+                                'name' => 'Utilisateur ' . $wapId,
+                                'email' => 'wap_user_' . $wapId . '@temp.local',
+                                'password' => bcrypt(Str::random(32)),
+                                'avatar' => null, // Sera mis à jour plus tard
+                                'gender' => 'Homme', // Valeur par défaut
+                            ]);
+                        } catch (\Exception $e) {
+                            // Ignorer l'erreur si création concurrente (race condition)
+                        }
+                    }
+                }
+            }
+        }
+
         // Validation personnalisée pour accepter les ID WAP ou les ID locaux
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in(['direct', 'group'])],
