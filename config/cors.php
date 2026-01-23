@@ -49,9 +49,7 @@ return [
         // DEV / PREPROD
         'https://dev.hellowap.com',
         'https://preprod.hellowap.com',
- 
-        // (optionnel) si d'autres front consomment le chat
-        // 'https://wapback.hellowap.com',
+        'https://wapback.com', // Backend
     ],
  
     /*

@@ -17,4 +17,15 @@ require __DIR__.'/../vendor/autoload.php';
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-$app->handleRequest(Request::capture());
+$request = Request::capture();
+
+// Fix for Authorization header on shared hosting
+if (!$request->headers->has('Authorization')) {
+    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $request->headers->set('Authorization', $_SERVER['HTTP_AUTHORIZATION']);
+    } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $request->headers->set('Authorization', $_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+    }
+}
+
+$app->handleRequest($request);
