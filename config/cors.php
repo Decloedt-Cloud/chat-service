@@ -1,25 +1,42 @@
 <?php
-
+ 
 return [
-
+ 
     /*
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
-
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
-
-    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-
+ 
+    /*
+     * Les routes concernées par le CORS
+     * - api/* : API REST
+     * - sanctum/csrf-cookie : si auth cookie
+     * - broadcasting/auth : Reverb / WebSocket auth
+     */
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'broadcasting/auth',
+    ],
+ 
+    /*
+     * Méthodes HTTP autorisées
+     */
+    'allowed_methods' => [
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'OPTIONS',
+    ],
+ 
+    /*
+     * ORIGINES AUTORISÉES (⚠️ explicites car credentials = true)
+     */
     'allowed_origins' => [
+        // Local
         'http://localhost:3000',
         'http://localhost:5173',
         'http://localhost:5174',
@@ -28,18 +45,48 @@ return [
         'http://127.0.0.1:5174',
         'http://localhost:8000',
         'http://localhost:8001',
+ 
+        // DEV / PREPROD
         'https://dev.hellowap.com',
-        'https://preprod.hellowap.com'
+        'https://preprod.hellowap.com',
+ 
+        // (optionnel) si d'autres front consomment le chat
+        // 'https://wapback.hellowap.com',
     ],
-
+ 
+    /*
+     * Pas besoin ici (on reste strict)
+     */
     'allowed_origins_patterns' => [],
-
-    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Application-ID', 'Accept', 'X-CSRF-TOKEN', 'X-Socket-ID'],
-
-    'exposed_headers' => [],
-
+ 
+    /*
+     * Headers autorisés depuis le frontend
+     */
+    'allowed_headers' => [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'X-CSRF-TOKEN',
+        'X-Application-ID',
+        'X-Socket-ID',
+    ],
+ 
+    /*
+     * Headers exposés au frontend (optionnel)
+     */
+    'exposed_headers' => [
+        'X-Socket-ID',
+    ],
+ 
+    /*
+     * Cache du preflight (OPTIONS) — 24h
+     */
     'max_age' => 86400,
-
+ 
+    /*
+     * OBLIGATOIRE pour cookies / auth cross-domain
+     */
     'supports_credentials' => true,
-
 ];
