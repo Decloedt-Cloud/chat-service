@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Simple API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #333; }
+        h2 { color: #666; margin-top: 0; }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background-color: #45a049; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .info { color: blue; }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            border: 1px solid #ddd;
+        }
+        .log {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-200 { background: #d4edda; color: #155724; }
+        .status-401 { background: #f8d7da; color: #721c24; }
+        .status-403 { background: #fff3cd; color: #856404; }
+        .status-500 { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Simple API - Chat Service</h1>
+    
+    <div class="container">
+        <h2>📝 Configuration</h2>
+        <div>
+            <label>API Base URL:</label><br>
+            <input type="text" id="apiBaseUrl" value="http://localhost:8000"><br><br>
+            
+            <label>Application ID:</label><br>
+            <input type="text" id="appId" value="test-app-001">
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>🔑 Step 1: Login</h2>
+        <div>
+            <input type="email" id="loginEmail" value="alice@example.com" placeholder="Email"><br>
+            <input type="password" id="loginPassword" value="password123" placeholder="Password"><br>
+            <input type="text" id="deviceName" value="Test Client" placeholder="Device Name"><br><br>
+            <button onclick="testLogin()" id="btnLogin">🚀 Login</button>
+            <button onclick="clearToken()" id="btnClearToken">🗑️ Clear Token</button>
+        </div>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>💬 Step 2: Load Conversations</h2>
+        <button onclick="testConversations()" id="btnConversations">📥 Load Conversations</button>
+        <div id="conversationsResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>📋 Logs de la Console</h2>
+        <div id="consoleLog" class="log"><pre>Aucun log pour le moment...</pre></div>
+    </div>
+    
+    <div class="container">
+        <h2>💾 Informations de Session</h2>
+        <div id="sessionInfo"><pre>Non connecté</pre></div>
+    </div>
+
+    <script>
+        let token = '';
+        let currentUser = null;
+        const apiBaseUrl = document.getElementById('apiBaseUrl').value;
+        const appId = document.getElementById('appId').value;
+        
+        // Logger function
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('consoleLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'error' : 
+                             type === 'success' ? 'success' : 
+                             type === 'warning' ? 'warning' : 'info';
+            
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logDiv.innerHTML = `<pre class="${colorClass}">${logEntry}</pre>` + logDiv.innerHTML;
+        }
+        
+        // Update session info
+        function updateSessionInfo() {
+            const sessionDiv = document.getElementById('sessionInfo');
+            if (token && currentUser) {
+                sessionDiv.innerHTML = `<pre class="success">
+✅ Connecté
+User: ${currentUser.name}
+Email: ${currentUser.email}
+ID: ${currentUser.id}
+Token: ${token.substring(0, 30)}...
+                </pre>`;
+            } else {
+                sessionDiv.innerHTML = `<pre class="error">❌ Non connecté</pre>`;
+            }
+        }
+        
+        // Clear token
+        function clearToken() {
+            token = '';
+            currentUser = null;
+            updateSessionInfo();
+            log('Token effacé', 'warning');
+            document.getElementById('loginResult').innerHTML = '';
+            document.getElementById('conversationsResult').innerHTML = '';
+        }
+        
+        // Test Login
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const deviceName = document.getElementById('deviceName').value;
+            
+            log('Début du test de login...', 'info');
+            log(`Email: ${email}`, 'info');
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, device_name: deviceName })
+                });
+                
+                log(`Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    token = data.data.token;
+                    currentUser = data.data.user;
+                    updateSessionInfo();
+                    
+                    const resultDiv = document.getElementById('loginResult');
+                    resultDiv.innerHTML = `<div class="success">
+                        <h3>✅ Login Réussi!</h3>
+                        <p><strong>User:</strong> ${currentUser.name}</p>
+                        <p><strong>Email:</strong> ${currentUser.email}</p>
+                        <p><strong>Token:</strong> ${token.substring(0, 50)}...</p>
+                    </div>`;
+                    
+                    log('Login réussi!', 'success');
+                } else {
+                    const resultDiv = document.getElementById('loginResult');
+                    resultDiv.innerHTML = `<div class="error">
+                        <h3>❌ Login Échoué</h3>
+                        <p>${data.message}</p>
+                    </div>`;
+                    log(`Login échoué: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`Erreur: ${error.message}`, 'error');
+                document.getElementById('loginResult').innerHTML = 
+                    `<div class="error"><h3>❌ Erreur</h3><p>${error.message}</p></div>`;
+            }
+        }
+        
+        // Test Conversations
+        async function testConversations() {
+            if (!token) {
+                log('Token manquant. Connectez-vous d\'abord!', 'warning');
+                document.getElementById('conversationsResult').innerHTML = 
+                    `<div class="warning"><h3>⚠️ Token Manquant</h3><p>Veuillez vous connecter d'abord</p></div>`;
+                return;
+            }
+            
+            log('Chargement des conversations...', 'info');
+            log(`URL: ${apiBaseUrl}/api/v1/conversations`, 'info');
+            log(`X-Application-ID: ${appId}`, 'info');
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/v1/conversations`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Application-ID': appId
+                    }
+                });
+                
+                log(`Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                // Log response headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                log(`Headers: ${JSON.stringify(headers, null, 2)}`, 'info');
+                
+                const data = await response.json();
+                log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.success) {
+                    const conversations = data.data;
+                    log(`${conversations.length} conversation(s) trouvée(s)`, 'success');
+                    
+                    let html = `<div class="success">
+                        <h3>✅ Conversations Chargées!</h3>
+                        <p><strong>Nombre:</strong> ${conversations.length}</p>`;
+                    
+                    if (conversations.length > 0) {
+                        html += '<div style="max-height: 300px; overflow-y: auto;">';
+                        html += '<table border="1" style="width: 100%; border-collapse: collapse;">';
+                        html += '<tr><th>ID</th><th>Type</th><th>Nom</th><th>Participants</th></tr>';
+                        
+                        conversations.forEach(conv => {
+                            html += `<tr>
+                                <td>${conv.id}</td>
+                                <td>${conv.type}</td>
+                                <td>${conv.display_name || 'N/A'}</td>
+                                <td>${conv.participants_count || 'N/A'}</td>
+                            </tr>`;
+                        });
+                        
+                        html += '</table></div>';
+                    } else {
+                        html += '<p>Aucune conversation trouvée.</p>';
+                    }
+                    
+                    html += '</div>';
+                    document.getElementById('conversationsResult').innerHTML = html;
+                } else {
+                    log(`Erreur API: ${data.message}`, 'error');
+                    document.getElementById('conversationsResult').innerHTML = 
+                        `<div class="error">
+                            <h3>❌ Erreur API</h3>
+                            <p>${data.message}</p>
+                        </div>`;
+                }
+            } catch (error) {
+                log(`Erreur: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+                document.getElementById('conversationsResult').innerHTML = 
+                    `<div class="error">
+                        <h3>❌ Erreur</h3>
+                        <p>${error.message}</p>
+                        <pre>${error.stack}</pre>
+                    </div>`;
+            }
+        }
+        
+        // Initialize
+        log('Page chargée. Prêt pour les tests.', 'info');
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

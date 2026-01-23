@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test API Chat Service</h1>
+    
+    <div class="section">
+        <h2>1. Login</h2>
+        <input type="email" id="loginEmail" value="alice@example.com" placeholder="Email">
+        <input type="password" id="loginPassword" value="password123" placeholder="Password">
+        <input type="text" id="deviceName" value="Test Client" placeholder="Device Name">
+        <button onclick="testLogin()">Login</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Test Conversations</h2>
+        <button onclick="testConversations()">Load Conversations</button>
+        <div id="conversationsResult"></div>
+    </div>
+    
+    <script>
+        let token = localStorage.getItem('test_token') || '';
+        const apiBaseUrl = 'http://localhost:8000';
+        const appId = 'test-app-001';
+        
+        function displayResult(elementId, message, isSuccess) {
+            const element = document.getElementById(elementId);
+            element.className = isSuccess ? 'section success' : 'section error';
+            element.innerHTML = `<pre>${message}</pre>`;
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const deviceName = document.getElementById('deviceName').value;
+            
+            try {
+                displayResult('loginResult', 'Envoi de la requête de login...', false);
+                
+                const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, device_name: deviceName })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    token = data.data.token;
+                    localStorage.setItem('test_token', token);
+                    
+                    displayResult('loginResult', 
+                        `✅ Login réussi!\n\n` +
+                        `User: ${data.data.user.name}\n` +
+                        `Email: ${data.data.user.email}\n` +
+                        `Token: ${token}\n\n` +
+                        `Token sauvegardé dans localStorage`,
+                        true
+                    );
+                } else {
+                    displayResult('loginResult', `❌ Login échoué: ${data.message}`, false);
+                }
+            } catch (error) {
+                displayResult('loginResult', `❌ Erreur: ${error.message}\n\nStack: ${error.stack}`, false);
+            }
+        }
+        
+        async function testConversations() {
+            if (!token) {
+                displayResult('conversationsResult', '❌ Pas de token. Veuillez vous connecter d\'abord.', false);
+                return;
+            }
+            
+            try {
+                displayResult('conversationsResult', 
+                    `Chargement des conversations...\n\n` +
+                    `URL: ${apiBaseUrl}/api/v1/conversations\n` +
+                    `Token: ${token.substring(0, 20)}...\n` +
+                    `X-Application-ID: ${appId}`,
+                    false
+                );
+                
+                const response = await fetch(`${apiBaseUrl}/api/v1/conversations`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Application-ID': appId
+                    }
+                });
+                
+                displayResult('conversationsResult', 
+                    `Status: ${response.status} ${response.statusText}\n\n` +
+                    `Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`,
+                    false
+                );
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResult('conversationsResult', 
+                        `✅ Conversations chargées!\n\n` +
+                        `Nombre de conversations: ${data.data.length}\n\n` +
+                        `Conversations:\n${JSON.stringify(data.data, null, 2)}`,
+                        true
+                    );
+                } else {
+                    displayResult('conversationsResult', `❌ Erreur: ${data.message}`, false);
+                }
+            } catch (error) {
+                displayResult('conversationsResult', 
+                    `❌ Erreur: ${error.message}\n\nStack: ${error.stack}`,
+                    false
+                );
+            }
+        }
+        
+        // Auto-login if token exists
+        if (token) {
+            document.getElementById('loginResult').innerHTML = 
+                `<p>Token trouvé: ${token.substring(0, 20)}...</p>`;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

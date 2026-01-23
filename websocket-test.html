@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test WebSocket Reverb</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        .status {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .status.connected { background: #4caf50; }
+        .status.disconnected { background: #f44336; }
+        .status.connecting { background: #ff9800; }
+        .content { padding: 30px; }
+        .section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 { color: #333; margin-bottom: 15px; font-size: 1.2em; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .info-item label { color: #666; font-size: 0.9em; display: block; margin-bottom: 5px; }
+        .info-item value { color: #333; font-weight: bold; }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 150px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        #logs {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            word-wrap: break-word;
+        }
+        .log-time { color: #888; }
+        .log-type { color: #4ec9b0; font-weight: bold; margin-right: 5px; }
+        .log-type.SUCCESS { color: #4caf50; }
+        .log-type.ERROR { color: #f44336; }
+        .log-type.INFO { color: #2196f3; }
+        .log-type.MESSAGE { color: #ffeb3b; }
+        .log-type.WARN { color: #ff9800; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-item h3 { font-size: 2em; margin-bottom: 5px; }
+        .stat-item p { font-size: 0.9em; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test WebSocket Reverb</h1>
+            <p>Interface de test pour Chat Service</p>
+            <div id="status" class="status disconnected">🔴 Déconnecté</div>
+        </div>
+
+        <div class="content">
+            <!-- Configuration Info -->
+            <div class="section">
+                <h2>📡 Configuration Reverb</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Host</label>
+                        <value>localhost</value>
+                    </div>
+                    <div class="info-item">
+                        <label>Port</label>
+                        <value>8080</value>
+                    </div>
+                    <div class="info-item">
+                        <label>App ID</label>
+                        <value>931104</value>
+                    </div>
+                    <div class="info-item">
+                        <label>Key</label>
+                        <value>iuvcjjlml7xkwbdfaxo3</value>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Controls -->
+            <div class="section">
+                <h2>🔌 Contrôles de Connexion</h2>
+                <div class="buttons">
+                    <button class="btn-primary" onclick="connectWebSocket()">🔄 Se connecter</button>
+                    <button class="btn-warning" onclick="subscribeChannel()">📢 S'abonner</button>
+                    <button class="btn-success" onclick="testEvent()">✨ Tester événement</button>
+                    <button class="btn-danger" onclick="closeWebSocket()">❌ Se déconnecter</button>
+                    <button onclick="clearLogs()">🗑️ Effacer logs</button>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <label>Channel:</label>
+                    <input type="text" id="channelInput" value="private-conversation.1.test-app-001"
+                           style="padding: 8px; width: 300px; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="section">
+                <h2>📊 Statistiques</h2>
+                <div class="stats">
+                    <div class="stat-item">
+                        <h3 id="msgCount">0</h3>
+                        <p>Messages reçus</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 id="errorCount">0</h3>
+                        <p>Erreurs</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 id="uptime">0s</h3>
+                        <p>Temps de connexion</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="section">
+                <h2>📋 Logs</h2>
+                <div id="logs"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const REVERB_HOST = 'localhost';
+        const REVERB_PORT = '8080';
+        const REVERB_APP_ID = '931104';
+        const REVERB_KEY = 'iuvcjjlml7xkwbdfaxo3';
+
+        let ws = null;
+        let msgCount = 0;
+        let errorCount = 0;
+        let connectionTime = null;
+        let uptimeInterval = null;
+
+        function log(type, message) {
+            const logsDiv = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-type ${type}">${type}:</span> ${message}`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + status;
+            statusDiv.textContent = message;
+        }
+
+        function updateStats() {
+            document.getElementById('msgCount').textContent = msgCount;
+            document.getElementById('errorCount').textContent = errorCount;
+
+            if (connectionTime) {
+                const uptime = Math.floor((Date.now() - connectionTime) / 1000);
+                const mins = Math.floor(uptime / 60);
+                const secs = uptime % 60;
+                document.getElementById('uptime').textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+            }
+        }
+
+        function connectWebSocket() {
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+                log('WARN', 'Déjà connecté ou en cours de connexion');
+                return;
+            }
+
+            const wsUrl = `ws://${REVERB_HOST}:${REVERB_PORT}/app/${REVERB_KEY}`;
+            log('INFO', `🔌 Tentative de connexion à: ${wsUrl}`);
+            updateStatus('connecting', '🟡 Connexion en cours...');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = function(event) {
+                    log('SUCCESS', '✅ Connexion WebSocket établie avec succès !');
+                    updateStatus('connected', '🟢 Connecté');
+                    connectionTime = Date.now();
+                    uptimeInterval = setInterval(updateStats, 1000);
+
+                    log('INFO', '📋 WebSocket prêt. Cliquez sur "S\'abonner" pour vous abonner à un channel');
+                };
+
+                ws.onmessage = function(event) {
+                    msgCount++;
+                    updateStats();
+
+                    try {
+                        const data = JSON.parse(event.data);
+                        log('MESSAGE', `📩 Événement reçu: ${data.event || 'unknown'}`);
+                        if (data.data) {
+                            log('MESSAGE', `   Données: ${JSON.stringify(data.data)}`);
+                        }
+                    } catch (e) {
+                        log('MESSAGE', `📩 Message brut: ${event.data}`);
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    errorCount++;
+                    updateStats();
+                    log('ERROR', `❌ Erreur WebSocket: ${error}`);
+                    updateStatus('disconnected', '🔴 Erreur de connexion');
+                };
+
+                ws.onclose = function(event) {
+                    const reason = event.reason || 'Sans raison';
+                    log('INFO', `📡 Connexion fermée - Code: ${event.code}, Raison: ${reason}`);
+
+                    if (event.code !== 1000) {
+                        errorCount++;
+                        updateStatus('disconnected', '🔴 Déconnecté (erreur)');
+                    } else {
+                        updateStatus('disconnected', '🔴 Déconnecté');
+                    }
+
+                    if (uptimeInterval) {
+                        clearInterval(uptimeInterval);
+                        uptimeInterval = null;
+                    }
+                    connectionTime = null;
+                    updateStats();
+                };
+
+            } catch (error) {
+                errorCount++;
+                updateStats();
+                log('ERROR', `❌ Exception: ${error.message}`);
+                updateStatus('disconnected', '🔴 Erreur de connexion');
+            }
+        }
+
+        function subscribeChannel() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('ERROR', '❌ WebSocket non connecté. Connectez-vous d\'abord.');
+                return;
+            }
+
+            const channel = document.getElementById('channelInput').value;
+            log('INFO', `📢 Tentative d'abonnement au channel: ${channel}`);
+
+            // Message Pusher-compatible pour s'abonner
+            const subscribeMsg = {
+                event: 'pusher:subscribe',
+                data: {
+                    channel: channel,
+                    auth: ''  // Pour les channels privés, vous devez obtenir l'auth depuis l'API
+                }
+            };
+
+            ws.send(JSON.stringify(subscribeMsg));
+            log('INFO', `📤 Message d'abonnement envoyé`);
+        }
+
+        function testEvent() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('ERROR', '❌ WebSocket non connecté. Connectez-vous d\'abord.');
+                return;
+            }
+
+            const channel = document.getElementById('channelInput').value;
+            log('INFO', `✨ Envoi d'un événement de test sur: ${channel}`);
+
+            // Simuler un événement de message
+            const eventMsg = {
+                event: 'client-message',
+                data: JSON.stringify({
+                    content: 'Ceci est un message de test !',
+                    user: 'Test User',
+                    timestamp: new Date().toISOString()
+                }),
+                channel: channel
+            };
+
+            ws.send(JSON.stringify(eventMsg));
+            log('INFO', `📤 Événement de test envoyé`);
+        }
+
+        function closeWebSocket() {
+            if (ws) {
+                if (ws.readyState === WebSocket.OPEN) {
+                    log('INFO', '🔌 Fermeture de la connexion...');
+                    ws.close(1000, 'Fermeture manuelle');
+                } else {
+                    log('WARN', '⚠️ WebSocket déjà fermé ou non connecté');
+                }
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('INFO', '🗑️ Logs effacés');
+        }
+
+        // Auto-connect on load (optional)
+        window.onload = function() {
+            log('INFO', '🚀 Page chargée. Prêt à tester WebSocket Reverb');
+            log('INFO', '💡 Cliquez sur "Se connecter" pour commencer');
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
