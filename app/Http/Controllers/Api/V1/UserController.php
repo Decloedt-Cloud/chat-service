@@ -31,18 +31,47 @@ class UserController extends Controller
         ], 200);
     }
 
+    public function search(Request $request): JsonResponse
+    {
+        $term = $request->input('term');
+        
+        if (empty($term)) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+            ], 200);
+        }
+
+        $user = $request->user();
+
+        // Search users excluding current user
+        $users = User::where('id', '!=', $user->id)
+            ->where(function ($query) use ($term) {
+                $query->where('name', 'like', "%{$term}%")
+                      ->orWhere('email', 'like', "%{$term}%");
+            })
+            ->select(['id', 'user_id', 'name', 'email', 'avatar'])
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ], 200);
+    }
+
     /**
      * Display the specified user.
-     * Recherche par ID local ou wap_user_id
+     * Recherche par ID local ou user_id
      *
-     * @param  int  $id  - Peut être l'ID local ou le wap_user_id
+     * @param  int  $id  - Peut être l'ID local ou le user_id
      * @return \Illuminate\Http\JsonResponse
      */
     public function show($id): JsonResponse
     {
-        // Rechercher par ID local ou wap_user_id
+        // Rechercher par ID local ou user_id
         $user = User::where('id', $id)
-            ->orWhere('wap_user_id', $id)
+            ->orWhere('user_id', $id)
             ->first();
 
         if (!$user) {
@@ -56,7 +85,7 @@ class UserController extends Controller
             'success' => true,
             'data' => [
                 'id' => $user->id,
-                'wap_user_id' => $user->wap_user_id,
+                'user_id' => $user->user_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'created_at' => $user->created_at,

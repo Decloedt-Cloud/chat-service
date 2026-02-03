@@ -41,6 +41,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
 // Authentification croisée avec le token WAP
 Route::post('/auth/cross-auth', [CrossAuthController::class, 'authenticateWithWapToken']);
+// Synchronisation utilisateur (sans nouveau token)
+Route::post('/auth/sync-user', [CrossAuthController::class, 'syncUser']);
 
 /*
 |--------------------------------------------------------------------------
@@ -76,6 +78,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::prefix('v1')->group(function () {
     // Broadcasting authentication (for WebSocket) - Must be inside v1 to match frontend URL
     Route::post('/broadcasting/auth', 'App\Http\Controllers\Api\V1\BroadcastingController@authenticate');
+
+    // Users
+    Route::get('/users/search', 'App\Http\Controllers\Api\V1\UserController@search');
+    Route::apiResource('users', 'App\Http\Controllers\Api\V1\UserController');
 
     // Conversations
     Route::apiResource('conversations', 'App\Http\Controllers\Api\V1\ConversationController');

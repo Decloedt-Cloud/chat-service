@@ -50,7 +50,7 @@ class ContactUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        return new PrivateChannel('user.' . $this->targetUserId . '.default');
+        return new PrivateChannel('user.' . $this->targetUserId . '.wayo');
     }
 
     /**

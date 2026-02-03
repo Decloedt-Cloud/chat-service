@@ -14,10 +14,23 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 /**
- * Channel pour les notifications utilisateur par application
+ * Channel de présence global par application
  * 
- * Format: user.{userId}.{appId}
+ * Permet de suivre les utilisateurs en ligne en temps réel.
+ * 
+ * @param  \App\Models\User  $user
+ * @param  string  $appId
+ * @return array|bool
  */
+Broadcast::channel('presence-global.{appId}', function ($user, $appId) {
+    return [
+        'id' => $user->id,
+        'user_id' => $user->user_id,
+        'name' => $user->name,
+        'avatar' => $user->avatar
+    ];
+});
+
 Broadcast::channel('user.{userId}.{appId}', function ($user, $userId, $appId) {
     return (int) $user->id === (int) $userId;
 });
