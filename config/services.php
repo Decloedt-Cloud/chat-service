@@ -34,5 +34,8 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'wap' => [
+    'backend_url' => env('WAYO_BACKEND_URL', env('WAP_BACKEND_URL')),
+    ],   
 
 ];

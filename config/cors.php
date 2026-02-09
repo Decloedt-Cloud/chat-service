@@ -82,6 +82,8 @@ return [
 
         'http://localhost:8001',
 
+	'http://localhost:8080',
+
         'http://localhost',
 
         'http://127.0.0.1',
@@ -93,7 +95,8 @@ return [
         'https://preprod.hellowap.com',
 
         'https://wapback.com', // Backend
-
+         
+         'https://preprod.wayo.site', 
     ],
 
     /*

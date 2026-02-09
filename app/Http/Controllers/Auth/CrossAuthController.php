@@ -21,12 +21,19 @@ class CrossAuthController extends Controller
     /**
      * URL du backend WAP
      */
-    private string $wapBackendUrl;
+   // private string $wapBackendUrl;
+    private string $wapBackendUrl = '';
+
 
     public function __construct()
     {
         // Default URL
-        $this->wapBackendUrl = env('WAP_BACKEND_URL', 'https://wapback.hellowap.com');
+       // $this->wapBackendUrl = env('WAYO_BACKEND_URL', 'https://preprod.wayo.site');
+      //  $this->wapBackendUrl = config('services.wap.backend_url') ?: 'https://preprod.wayo.site';
+      // $this->wapBackendUrl = config('services.wap.backend_url');
+
+            $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+
     }
 
     /**
@@ -114,10 +121,23 @@ class CrossAuthController extends Controller
      */
     public function authenticateWithWapToken(Request $request): JsonResponse
     {
+
+Log::info('Cross-auth: incoming headers', [
+    'origin' => $request->header('Origin'),
+    'x_app' => $request->header('X-Application-ID'),
+    'authorization' => $request->header('Authorization') ? 'present' : 'missing',
+    'bearer_token' => $request->bearerToken() ? 'present' : 'missing',
+    'body_wap_token_present' => $request->filled('wap_token'),
+    'body_wap_token_len' => $request->filled('wap_token') ? strlen((string) $request->input('wap_token')) : 0,
+    'bearer_len' => $request->bearerToken() ? strlen((string) $request->bearerToken()) : 0,
+]);
+
         // Determine backend URL based on App ID
         $appId = $request->header('X-Application-ID');
         if ($appId === 'wayo' || $appId === 'school-management') {
-            $this->wapBackendUrl = env('WAYO_BACKEND_URL');
+           // $this->wapBackendUrl = env('WAYO_BACKEND_URL');
+              $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+
             if (empty($this->wapBackendUrl)) {
                  Log::error('Cross-auth: WAYO_BACKEND_URL non configuré');
                  return response()->json(['success' => false, 'message' => 'Server configuration error'], 500);
