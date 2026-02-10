@@ -71,22 +71,25 @@ class BroadcastingController extends Controller
 
             Log::info('[Broadcasting Auth] User is authorized');
         } 
-        // Parse presence channel: presence-chat.{appId}
-        else if (preg_match('/^presence-chat\.(.+)$/', $channelName, $matches)) {
-            $appId = $matches[1];
+        // Parse presence channel: presence-chat.{appId} or presence-global.{appId}
+        else if (preg_match('/^presence-(chat|global)\.(.+)$/', $channelName, $matches)) {
+            $appId = $matches[2]; // matches[2] because matches[1] is (chat|global)
             
             // Channel data for presence channel (must be JSON string)
             $channelData = json_encode([
                 'user_id' => (string) $user->id,
                 'user_info' => [
                     'id' => $user->id,
+                    'user_id' => $user->user_id, // WAP ID
                     'name' => $user->name,
                     'email' => $user->email,
+                    'avatar' => $user->avatar,
                     'app_id' => $appId
                 ]
             ]);
 
             Log::info('[Broadcasting Auth] Presence channel authorized', [
+                'channel_type' => $matches[1],
                 'app_id' => $appId,
                 'user_id' => $user->id
             ]);

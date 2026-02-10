@@ -79,9 +79,9 @@ class ConversationController extends Controller
             foreach ($request->input('participant_ids') as $wapId) {
                 // On vérifie si l'ID est numérique (ID WAP)
                 if (is_numeric($wapId)) {
-                    // Vérifier si l'utilisateur existe déjà (par ID local ou WAP ID)
+                    // Vérifier si l'utilisateur existe déjà (par ID local ou User ID)
                     $exists = User::where('id', $wapId)
-                        ->orWhere('wap_user_id', $wapId)
+                        ->orWhere('user_id', $wapId)
                         ->exists();
 
                     if (!$exists) {
@@ -89,9 +89,9 @@ class ConversationController extends Controller
                         // Il sera mis à jour lors de sa première connexion via CrossAuth
                         try {
                             User::create([
-                                'wap_user_id' => $wapId,
+                                'user_id' => $wapId,
                                 'name' => 'Utilisateur ' . $wapId,
-                                'email' => 'wap_user_' . $wapId . '@temp.local',
+                                'email' => 'user_' . $wapId . '@temp.local',
                                 'password' => bcrypt(Str::random(32)),
                                 'avatar' => null, // Sera mis à jour plus tard
                                 'gender' => 'Homme', // Valeur par défaut
@@ -113,9 +113,9 @@ class ConversationController extends Controller
             'participant_ids' => ['required', 'array', 'min:1'],
             'participant_ids.*' => [
                 function ($attribute, $value, $fail) {
-                    // Rechercher par ID local ou par wap_user_id
+                    // Rechercher par ID local ou par user_id
                     $exists = User::where('id', $value)
-                        ->orWhere('wap_user_id', $value)
+                        ->orWhere('user_id', $value)
                         ->exists();
                    
                     if (!$exists) {
@@ -150,15 +150,15 @@ class ConversationController extends Controller
             // Si l'utilisateur trouvé est soi-même, vérifier si ce n'est pas plutôt un ID WAP destiné à un autre utilisateur
             // (Cas de collision : Mon ID local = 30, et je veux contacter le WAP ID 30 qui est quelqu'un d'autre)
             if ($otherUser && $otherUser->id == $user->id) {
-                $otherUserByWap = User::where('wap_user_id', $otherUserIdValue)->first();
+                $otherUserByWap = User::where('user_id', $otherUserIdValue)->first();
                 if ($otherUserByWap && $otherUserByWap->id != $user->id) {
                     $otherUser = $otherUserByWap;
                 }
             }
            
-            // Sinon par wap_user_id si non trouvé par ID local
+            // Sinon par user_id si non trouvé par ID local
             if (!$otherUser) {
-                $otherUser = User::where('wap_user_id', $otherUserIdValue)->first();
+                $otherUser = User::where('user_id', $otherUserIdValue)->first();
             }
 
             if (!$otherUser) {
@@ -169,7 +169,7 @@ class ConversationController extends Controller
             }
 
             // Ne pas créer de conversation avec soi-même
-            if ($otherUser->id == $user->id || $otherUser->wap_user_id == $user->wap_user_id) {
+            if ($otherUser->id == $user->id || $otherUser->user_id == $user->user_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Impossible de créer une conversation avec soi-même',
@@ -243,9 +243,9 @@ class ConversationController extends Controller
             // Rechercher l'utilisateur par ID local en priorité
             $participant = User::where('id', $participantIdValue)->first();
 
-            // Sinon par wap_user_id
+            // Sinon par user_id
             if (!$participant) {
-                $participant = User::where('wap_user_id', $participantIdValue)->first();
+                $participant = User::where('user_id', $participantIdValue)->first();
             }
 
             if ($participant && $participant->id != $user->id) {

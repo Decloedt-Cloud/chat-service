@@ -70,6 +70,26 @@ class MessageController extends Controller
 
         $messages = $query->paginate($perPage);
 
+        // --- AJOUT POUR GÉRER L'ÉTAT DE LECTURE (READ_AT) ---
+        // On récupère la date de dernière lecture la plus récente parmi les AUTRES participants
+        // Cela permet de marquer comme "lus" les messages envoyés par l'utilisateur courant qui ont été vus par au moins une personne (ou l'interlocuteur en 1-1)
+        
+        $otherParticipantsMaxReadAt = $conversation->participants()
+            ->where('user_id', '!=', $user->id)
+            ->max('last_read_at');
+
+        // On injecte l'attribut read_at dynamiquement
+        $messages->getCollection()->transform(function ($message) use ($otherParticipantsMaxReadAt, $user) {
+            // Si le message est de moi et qu'il a été lu par quelqu'un d'autre
+            if ($message->user_id == $user->id && $otherParticipantsMaxReadAt && $message->created_at <= $otherParticipantsMaxReadAt) {
+                $message->read_at = $otherParticipantsMaxReadAt;
+            }
+            // Sinon, on laisse tel quel (null par défaut si non défini)
+            
+            return $message;
+        });
+        // ----------------------------------------------------
+
         // Inverser l'ordre pour avoir les messages du plus ancien au plus récent
         $messages->getCollection()->reverse();
 
@@ -167,7 +187,7 @@ class MessageController extends Controller
                     // Validation pour les fichiers audio
                     // Note: Le MediaRecorder génère audio/webm mais PHP Fileinfo peut le détecter comme video/webm
                     // On valide la taille uniquement car le type MIME n'est pas fiable pour WebM audio
-                    $maxSize = 5 * 1024 * 1024; // 5MB en octets
+                    $maxSize = 10 * 1024 * 1024; // 10MB en octets
                     
                     if ($file->getSize() > $maxSize) {
                         Log::warning('[MessageController] Audio file too large', [
@@ -177,7 +197,7 @@ class MessageController extends Controller
                         return response()->json([
                             'success' => false,
                             'message' => 'Erreur de validation du fichier audio',
-                            'errors' => ['file' => ['Le fichier audio ne doit pas dépasser 5Mo']],
+                            'errors' => ['file' => ['Le fichier audio ne doit pas dépasser 10Mo']],
                         ], 422);
                     }
 

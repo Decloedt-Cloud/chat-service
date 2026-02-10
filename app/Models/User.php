@@ -24,7 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'wap_user_id',
+        'user_id',
         'avatar',
         'gender',
     ];

@@ -41,8 +41,8 @@ class UserUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        // Matches the channel name in websocket.js: private-user.{id}.default
-        return new PrivateChannel('user.' . $this->user->id . '.default');
+        // Matches the channel name in websocket.js: private-user.{id}.wayo
+        return new PrivateChannel('user.' . $this->user->id . '.wayo');
     }
 
     /**

@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->unsignedBigInteger('wap_user_id')->nullable()->after('id');
-            $table->index('wap_user_id');
+            if (Schema::hasColumn('users', 'wap_user_id') && !Schema::hasColumn('users', 'user_id')) {
+                $table->renameColumn('wap_user_id', 'user_id');
+            }
         });
     }
 
@@ -23,9 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex(['wap_user_id']);
-            $table->dropColumn('wap_user_id');
+            if (Schema::hasColumn('users', 'user_id') && !Schema::hasColumn('users', 'wap_user_id')) {
+                $table->renameColumn('user_id', 'wap_user_id');
+            }
         });
     }
 };
-

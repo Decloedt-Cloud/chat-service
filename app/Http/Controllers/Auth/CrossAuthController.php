@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Events\ContactUpdated;
+use App\Events\UserUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -19,12 +21,97 @@ class CrossAuthController extends Controller
     /**
      * URL du backend WAP
      */
-    private string $wapBackendUrl;
+   // private string $wapBackendUrl;
+    private string $wapBackendUrl = '';
+
 
     public function __construct()
     {
-        $this->wapBackendUrl = env('WAP_BACKEND_URL', 'https://wapback.hellowap.com');
-     }
+        // Default URL
+       // $this->wapBackendUrl = env('WAYO_BACKEND_URL', 'https://preprod.wayo.site');
+      //  $this->wapBackendUrl = config('services.wap.backend_url') ?: 'https://preprod.wayo.site';
+      // $this->wapBackendUrl = config('services.wap.backend_url');
+
+            $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+
+    }
+
+    /**
+     * Synchronise les données utilisateur depuis l'application principale (push)
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function syncUser(Request $request): JsonResponse
+    {
+        try {
+            // Validation basique
+            if (!$request->has('user_id') || !$request->has('email')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Données incomplètes (user_id et email requis)',
+                ], 400);
+            }
+
+            $userData = $request->all();
+            
+            Log::info('Sync-User: Données reçues', [
+                'user_id' => $userData['user_id'],
+                'email' => $userData['email'],
+                'avatar' => $userData['avatar'] ?? 'null'
+            ]);
+
+            // Trouver ou créer l'utilisateur dans le chat-service
+            // On utilise user_id (WAP ID) comme clé externe principale si possible, ou email
+            $user = User::updateOrCreate(
+                ['email' => $userData['email']], // On suppose que l'email est unique et stable
+                [
+                    'name' => $userData['name'],
+                    'user_id' => $userData['user_id'], // WAP ID
+                    'avatar' => $userData['avatar'] ?? null,
+                    'gender' => $userData['gender'] ?? null,
+                ]
+            );
+
+            // BROADCASTING SYNC EVENTS
+            // 1. Notify the user themselves (updates their own UI)
+            broadcast(new UserUpdated($user));
+
+            // 2. Notify all participants in conversations with this user (updates contacts' UI)
+            try {
+                $conversations = $user->conversations()->with('participants')->get();
+                $notifiedUserIds = [];
+
+                foreach ($conversations as $conversation) {
+                    foreach ($conversation->participants as $participant) {
+                        // Skip the user themselves and already notified users
+                        if ($participant->user_id == $user->id || in_array($participant->user_id, $notifiedUserIds)) {
+                            continue;
+                        }
+                        
+                        broadcast(new ContactUpdated($user, $participant->user_id));
+                        $notifiedUserIds[] = $participant->user_id;
+                    }
+                }
+                Log::info("Sync-User: Broadcasted update for User {$user->id} to " . count($notifiedUserIds) . " contacts.");
+            } catch (\Exception $e) {
+                Log::error("Sync-User Broadcast Error: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Utilisateur synchronisé avec succès',
+                'data' => $user
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Sync-User: Erreur', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * Authentification croisée avec le token WAP
@@ -34,6 +121,29 @@ class CrossAuthController extends Controller
      */
     public function authenticateWithWapToken(Request $request): JsonResponse
     {
+
+Log::info('Cross-auth: incoming headers', [
+    'origin' => $request->header('Origin'),
+    'x_app' => $request->header('X-Application-ID'),
+    'authorization' => $request->header('Authorization') ? 'present' : 'missing',
+    'bearer_token' => $request->bearerToken() ? 'present' : 'missing',
+    'body_wap_token_present' => $request->filled('wap_token'),
+    'body_wap_token_len' => $request->filled('wap_token') ? strlen((string) $request->input('wap_token')) : 0,
+    'bearer_len' => $request->bearerToken() ? strlen((string) $request->bearerToken()) : 0,
+]);
+
+        // Determine backend URL based on App ID
+        $appId = $request->header('X-Application-ID');
+        if ($appId === 'wayo' || $appId === 'school-management') {
+           // $this->wapBackendUrl = env('WAYO_BACKEND_URL');
+              $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+
+            if (empty($this->wapBackendUrl)) {
+                 Log::error('Cross-auth: WAYO_BACKEND_URL non configuré');
+                 return response()->json(['success' => false, 'message' => 'Server configuration error'], 500);
+            }
+        }
+
         $wapToken = $request->input('wap_token') ?? $request->bearerToken();
 
         if (!$wapToken) {
@@ -113,7 +223,7 @@ class CrossAuthController extends Controller
                 ['email' => $userData['email']],
                 [
                     'name' => $userData['name'] ?? $userData['prenom'] ?? $userData['email'],
-                    'wap_user_id' => $userData['id'],
+                    'user_id' => $userData['id'],
                     'password' => bcrypt(Str::random(32)), // Password aléatoire (non utilisé)
                     'avatar' => $avatar,
                     'gender' => $gender,
@@ -130,7 +240,7 @@ class CrossAuthController extends Controller
             $token = $user->createToken($deviceName, ['*'], now()->addDays(7));
 
             Log::info('Cross-auth: Authentification réussie', [
-                'wap_user_id' => $userData['id'],
+                'user_id' => $userData['id'],
                 'chat_user_id' => $user->id,
                 'email' => $user->email,
             ]);
@@ -143,7 +253,7 @@ class CrossAuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'wap_user_id' => $user->wap_user_id,
+                        'user_id' => $user->user_id,
                         'avatar' => $user->avatar,
                         'sexe' => $user->sexe,
                     ],
@@ -191,10 +301,9 @@ class CrossAuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'wap_user_id' => $user->wap_user_id,
+                    'user_id' => $user->user_id,
                 ],
             ],
         ], 200);
     }
 }
-
