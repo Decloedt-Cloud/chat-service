@@ -28,11 +28,11 @@ class CrossAuthController extends Controller
     public function __construct()
     {
         // Default URL
-       // $this->wapBackendUrl = env('WAYO_BACKEND_URL', 'https://preprod.wayo.site');
-      //  $this->wapBackendUrl = config('services.wap.backend_url') ?: 'https://preprod.wayo.site';
+       // $this->wapBackendUrl = env('WAYO_BACKEND_URL', 'https://wayo.ma');
+      //  $this->wapBackendUrl = config('services.wap.backend_url') ?: 'https://wayo.ma';
       // $this->wapBackendUrl = config('services.wap.backend_url');
 
-            $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+            $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://wayo.ma';
 
     }
 
@@ -136,7 +136,7 @@ Log::info('Cross-auth: incoming headers', [
         $appId = $request->header('X-Application-ID');
         if ($appId === 'wayo' || $appId === 'school-management') {
            // $this->wapBackendUrl = env('WAYO_BACKEND_URL');
-              $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://preprod.wayo.site';
+              $this->wapBackendUrl = config('services.wap.backend_url') ?? env('WAYO_BACKEND_URL') ?? 'https://wayo.ma';
 
             if (empty($this->wapBackendUrl)) {
                  Log::error('Cross-auth: WAYO_BACKEND_URL non configuré');
