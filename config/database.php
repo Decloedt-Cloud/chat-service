@@ -1,9 +1,9 @@
 <?php
-
+ 
 use Illuminate\Support\Str;
-
+ 
 return [
-
+ 
     /*
     |--------------------------------------------------------------------------
     | Default Database Connection Name
@@ -15,9 +15,9 @@ return [
     | is explicitly specified when you execute a query / statement.
     |
     */
-
+ 
     'default' => env('DB_CONNECTION', 'sqlite'),
-
+ 
     /*
     |--------------------------------------------------------------------------
     | Database Connections
@@ -28,9 +28,9 @@ return [
     | is supported by Laravel. You're free to add / remove connections.
     |
     */
-
+ 
     'connections' => [
-
+ 
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
@@ -42,22 +42,7 @@ return [
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
         ],
-
-        'mysql_wapp' => [
-            'driver' => 'mysql',
-            'host' => env('WAPP_DB_HOST', '127.0.0.1'),
-            'port' => env('WAPP_DB_PORT', '3306'),
-            'database' => env('WAPP_DB_DATABASE', 'wapp'),
-            'username' => env('WAPP_DB_USERNAME', 'root'),
-            'password' => env('WAPP_DB_PASSWORD', ''),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-           'prefix' => '',
-           'strict' => false,
-           'engine' => null,
-        ],
-
-
+ 
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
@@ -77,7 +62,7 @@ return [
                 (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-
+ 
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
@@ -97,7 +82,7 @@ return [
                 (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-
+ 
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
@@ -112,7 +97,7 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
-
+ 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
@@ -127,9 +112,9 @@ return [
             // 'encrypt' => env('DB_ENCRYPT', 'yes'),
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
-
+ 
     ],
-
+ 
     /*
     |--------------------------------------------------------------------------
     | Migration Repository Table
@@ -140,12 +125,12 @@ return [
     | the migrations on disk haven't actually been run on the database.
     |
     */
-
+ 
     'migrations' => [
         'table' => 'migrations',
         'update_date_on_publish' => true,
     ],
-
+ 
     /*
     |--------------------------------------------------------------------------
     | Redis Databases
@@ -156,17 +141,17 @@ return [
     | such as Memcached. You may define your connection settings here.
     |
     */
-
+ 
     'redis' => [
-
+ 
         'client' => env('REDIS_CLIENT', 'phpredis'),
-
+ 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
-
+ 
         'default' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
@@ -179,7 +164,7 @@ return [
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
-
+ 
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
@@ -192,7 +177,9 @@ return [
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
-
+ 
     ],
-
+ 
 ];
+ 
+ 
