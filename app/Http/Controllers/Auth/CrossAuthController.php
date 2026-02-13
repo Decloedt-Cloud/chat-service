@@ -24,11 +24,11 @@ class CrossAuthController extends Controller
     public function __construct()
     {
         $this->wapBackendUrl = env('WAP_BACKEND_URL', 'https://wapback.hellowap.com');
-     }
+    }
 
     /**
      * Authentification croisée avec le token WAP
-     * 
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -53,7 +53,7 @@ class CrossAuthController extends Controller
                 Log::warning('Cross-auth: Token WAP invalide', [
                     'status' => $response->status(),
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Token WAP invalide ou expiré',
@@ -61,23 +61,21 @@ class CrossAuthController extends Controller
             }
 
             $wapUserData = $response->json();
-            
+
             // Extraire les données utilisateur (gérer différents formats de réponse)
             $userData = $wapUserData['data'] ?? $wapUserData['user'] ?? $wapUserData;
-            
+
             Log::info('Cross-auth: Données reçues de WAP', [
                 'has_intervenant' => isset($userData['intervenant']),
                 'has_client' => isset($userData['client']),
-                'keys' => array_keys($userData),
-                'intervenant_data' => $userData['intervenant'] ?? 'null',
-                'client_data' => $userData['client'] ?? 'null',
+                'keys' => is_array($userData) ? array_keys($userData) : [],
             ]);
 
             if (!isset($userData['id']) || !isset($userData['email'])) {
                 Log::error('Cross-auth: Format de réponse WAP invalide', [
                     'response' => $wapUserData,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Format de réponse WAP invalide',
@@ -86,33 +84,54 @@ class CrossAuthController extends Controller
 
             // Déterminer les informations supplémentaires (avatar, genre) depuis le profil (Intervenant ou Client)
             $profile = $userData['intervenant'] ?? $userData['client'] ?? null;
-            $avatar = $profile['profile_photo_url'] ?? null;
-            $gender = $profile['sexe'] ?? null;
 
-            // Fallback: Si pas d'avatar dans le profil, essayer de le construire depuis le user
+            // avatar: prioritaire depuis profile_photo_url
+            $avatar = is_array($profile) ? ($profile['profile_photo_url'] ?? null) : null;
+
+            // gender: le champ "sexe" (WAP) est stocké dans "gender" côté chat-service
+            $gender = is_array($profile) ? ($profile['sexe'] ?? null) : null;
+
+            // Fallback avatar: depuis photo_profil user
             if (!$avatar && !empty($userData['photo_profil'])) {
                 $storageUrl = $this->wapBackendUrl . '/storage/';
-                // Si le chemin commence déjà par http, l'utiliser tel quel, sinon préfixer
-                if (str_starts_with($userData['photo_profil'], 'http')) {
+
+                if (str_starts_with((string)$userData['photo_profil'], 'http')) {
                     $avatar = $userData['photo_profil'];
                 } else {
-                    $avatar = $storageUrl . ltrim($userData['photo_profil'], '/');
-                    // Gestion spécifique pour les attachments intervenant/client si nécessaire
-                    // Mais généralement photo_profil dans User est le chemin relatif
+                    $avatar = $storageUrl . ltrim((string)$userData['photo_profil'], '/');
                 }
             }
-            
+
+            // --- Resolve name safely (handles empty string too) ---
+            $name = trim((string)($userData['name'] ?? ''));
+
+            // si name vide, fallback sur prenom/nom
+            if ($name === '') {
+                $prenom = trim((string)($userData['prenom'] ?? ''));
+                $nom    = trim((string)($userData['nom'] ?? ''));
+                $name = trim($prenom . ' ' . $nom);
+            }
+
+            // si toujours vide, fallback sur email prefix ou "Utilisateur {id}"
+            if ($name === '') {
+                $email = (string)($userData['email'] ?? '');
+                $name = $email ? explode('@', $email)[0] : ('Utilisateur ' . ($userData['id'] ?? ''));
+            }
+
             Log::info('Cross-auth: Données extraites', [
+                'wap_user_id' => $userData['id'],
+                'email' => $userData['email'],
+                'name_resolved' => $name,
+                'name_raw' => $userData['name'] ?? null,
                 'avatar' => $avatar,
                 'gender' => $gender,
-                'email' => $userData['email']
             ]);
 
             // Trouver ou créer l'utilisateur dans le chat-service
             $user = User::updateOrCreate(
                 ['email' => $userData['email']],
                 [
-                    'name' => $userData['name'] ?? $userData['prenom'] ?? $userData['email'],
+                    'name' => $name,
                     'wap_user_id' => $userData['id'],
                     'password' => bcrypt(Str::random(32)), // Password aléatoire (non utilisé)
                     'avatar' => $avatar,
@@ -120,7 +139,14 @@ class CrossAuthController extends Controller
                 ]
             );
 
-            Log::info('Cross-auth: Utilisateur mis à jour', $user->toArray());
+            Log::info('Cross-auth: Utilisateur mis à jour', [
+                'id' => $user->id,
+                'wap_user_id' => $user->wap_user_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar' => $user->avatar,
+                'gender' => $user->gender,
+            ]);
 
             // Supprimer les anciens tokens de cet appareil
             $deviceName = $request->input('device_name', 'wap-frontend');
@@ -145,7 +171,9 @@ class CrossAuthController extends Controller
                         'email' => $user->email,
                         'wap_user_id' => $user->wap_user_id,
                         'avatar' => $user->avatar,
-                        'sexe' => $user->sexe,
+                        // On renvoie aussi "sexe" pour compatibilité front si besoin
+                        'gender' => $user->gender,
+                        'sexe' => $user->gender,
                     ],
                     'token' => $token->plainTextToken,
                     'token_type' => 'Bearer',
@@ -168,7 +196,7 @@ class CrossAuthController extends Controller
 
     /**
      * Vérifie si un token chat-service est valide
-     * 
+     *
      * @param Request $request
      * @return JsonResponse
      */
@@ -192,9 +220,10 @@ class CrossAuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'wap_user_id' => $user->wap_user_id,
+                    'avatar' => $user->avatar,
+                    'gender' => $user->gender,
                 ],
             ],
         ], 200);
     }
 }
-
