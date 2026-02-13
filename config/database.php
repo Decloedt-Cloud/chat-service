@@ -43,6 +43,21 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
+        'mysql_wapp' => [
+            'driver' => 'mysql',
+            'host' => env('WAPP_DB_HOST', '127.0.0.1'),
+            'port' => env('WAPP_DB_PORT', '3306'),
+            'database' => env('WAPP_DB_DATABASE', 'wapp'),
+            'username' => env('WAPP_DB_USERNAME', 'root'),
+            'password' => env('WAPP_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+           'prefix' => '',
+           'strict' => false,
+           'engine' => null,
+        ],
+
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
