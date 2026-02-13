@@ -32,11 +32,6 @@ class CrossAuthController extends Controller
         }
 
         try {
-            Log::info('Cross-auth: HIT authenticateWithWapToken', [
-                'has_bearer' => (bool) $request->bearerToken(),
-                'has_wap_token_input' => $request->filled('wap_token'),
-            ]);
-
             $response = Http::withToken($wapToken)
                 ->timeout(10)
                 ->get("{$this->wapBackendUrl}/api/user");
@@ -44,7 +39,6 @@ class CrossAuthController extends Controller
             if (!$response->successful()) {
                 Log::warning('Cross-auth: Token WAP invalide', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
                 ]);
 
                 return response()->json([
@@ -77,25 +71,23 @@ class CrossAuthController extends Controller
             $avatar = is_array($profile) ? ($profile['profile_photo_url'] ?? null) : null;
             $gender = is_array($profile) ? ($profile['sexe'] ?? null) : null;
 
-            // Fallback avatar depuis photo_profil root
+            // Fallback avatar depuis photo_profil root (WAP)
             if (!$avatar && !empty($userData['photo_profil'])) {
                 $storageUrl = $this->wapBackendUrl . '/storage/';
                 $photo = (string) $userData['photo_profil'];
 
-                if (str_starts_with($photo, 'http')) {
-                    $avatar = $photo;
-                } else {
-                    $avatar = $storageUrl . ltrim($photo, '/');
-                }
+                $avatar = str_starts_with($photo, 'http')
+                    ? $photo
+                    : $storageUrl . ltrim($photo, '/');
             }
 
             /**
              * ✅ NAME RESOLUTION
              * 1) API user.name
              * 2) API user.prenom + user.nom
-             * 3) API profile.prenom + profile.nom (intervenant/client)
+             * 3) API profile.prenom + profile.nom
              * 4) DB wapp.users.name (source fiable)
-             * 5) DB wapp.intervenants / wapp.clients prenom+nom
+             * 5) DB wapp.intervenants / clients prenom+nom
              * 6) email prefix
              * 7) Utilisateur {wapId}
              */
@@ -113,7 +105,7 @@ class CrossAuthController extends Controller
                 $name = trim($prenom . ' ' . $nom);
             }
 
-            // ✅ FALLBACK DB (wapp) si toujours vide
+            // ✅ FALLBACK DB WAPP si l'API ne donne pas un nom fiable
             if ($name === '') {
                 $dbName = $this->resolveNameFromWappDb($wapId, $email);
                 if ($dbName) {
@@ -129,26 +121,16 @@ class CrossAuthController extends Controller
                 $name = 'Utilisateur ' . $wapId;
             }
 
-            Log::info('Cross-auth: Données extraites', [
-                'wap_user_id' => $wapId,
-                'email' => $email,
-                'name_resolved' => $name,
-                'name_raw' => $userData['name'] ?? null,
-                'profile_keys' => is_array($profile) ? array_keys($profile) : null,
-                'avatar' => $avatar,
-                'gender' => $gender,
-            ]);
-
             /**
-             * ✅ MATCH USER: d'abord par wap_user_id (source de vérité)
-             * fallback par email si besoin
+             * ✅ MATCH USER: d'abord par wap_user_id
+             * fallback par email
              */
             $localUser = User::where('wap_user_id', $wapId)->first();
             if (!$localUser) {
                 $localUser = User::where('email', $email)->first();
             }
 
-            // ✅ Ne pas écraser un "vrai nom" par un fallback faible
+            // ✅ Eviter d'écraser un vrai nom par un fallback emailPrefix
             $finalName = $name;
             if ($localUser && trim((string)$localUser->name) !== '') {
                 $emailPrefix = $email ? explode('@', $email)[0] : null;
@@ -207,7 +189,7 @@ class CrossAuthController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
-            Log::error('Cross-auth: Erreur lors de la vérification du token WAP', [
+            Log::error('Cross-auth: Erreur', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -220,7 +202,7 @@ class CrossAuthController extends Controller
     }
 
     /**
-     * Résout le nom depuis la base WAPP (connexion mysql_wapp).
+     * Résout le nom depuis la DB WAPP via connexion mysql_wapp
      */
     private function resolveNameFromWappDb(int $wapId, string $email): ?string
     {
@@ -237,7 +219,7 @@ class CrossAuthController extends Controller
                 return trim((string) $u->name);
             }
 
-            // 2) intervenants prenom + nom (si user_id = wapId)
+            // 2) intervenants prenom+nom
             $i = DB::connection('mysql_wapp')
                 ->table('intervenants')
                 ->select('prenom', 'nom')
@@ -249,9 +231,8 @@ class CrossAuthController extends Controller
                 if ($full !== '') return $full;
             }
 
-            // 3) clients prenom + nom (si table existe)
-            // ⚠️ si ta table s'appelle autrement, change ici
-            if (Schema::connection('mysql_wapp')->hasTable('clients')) {
+            // 3) clients prenom+nom (si existe)
+            try {
                 $c = DB::connection('mysql_wapp')
                     ->table('clients')
                     ->select('prenom', 'nom')
@@ -262,6 +243,8 @@ class CrossAuthController extends Controller
                     $full = trim(trim((string)$c->prenom) . ' ' . trim((string)$c->nom));
                     if ($full !== '') return $full;
                 }
+            } catch (\Throwable $ignored) {
+                // table clients absente -> ignore
             }
 
             return null;
